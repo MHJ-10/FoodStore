@@ -1,0 +1,51 @@
+﻿# ==============================
+# Visual Studio / IDE
+# ==============================
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vscode/
+.idea/
+
+# ==============================
+# ASP.NET Core / Backend
+# ==============================
+bin/
+obj/
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.json
+*.log
+
+# ==============================
+# React / Node / Frontend
+# ==============================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+dist/
+build/
+
+# ==============================
+# Environment files
+# ==============================
+.env
+.env.*.local
+
+# ==============================
+# TypeScript
+# ==============================
+*.tsbuildinfo
+
+# ==============================
+# OS / Temporary files
+# ==============================
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
