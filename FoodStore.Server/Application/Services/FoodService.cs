@@ -2,6 +2,7 @@
 using FluentValidation;
 using FluentValidation.Results;
 using FoodStore.Server.Application.Foods.Commands;
+using FoodStore.Server.Application.Foods.Error;
 using FoodStore.Server.Application.Foods.Queries;
 using FoodStore.Server.Infrastructure;
 using FoodStore.Server.Infrastructure.DataModels;
@@ -33,10 +34,10 @@ public class FoodService : IFoodService
 
     public async Task<ErrorOr<FindFood.Response>> FindFoodAsync(int foodId, CancellationToken cancellationToken)
     {
-        var findedFood = await _db.Foods.Include(f => f.Category).FirstOrDefaultAsync(x => x.Id == foodId, cancellationToken);
+        var findedFood = await _db.Foods.AsNoTracking().Include(f => f.Category).FirstOrDefaultAsync(x => x.Id == foodId, cancellationToken);
         if (findedFood is null)
         {
-            return Error.NotFound("FoodIsNull", $"The food with the Id {foodId} cannot be founded");
+            return FoodErrors.FoodNotFound(foodId);
         }
         return findedFood.Adapt<FindFood.Response>();
     }
@@ -46,7 +47,7 @@ public class FoodService : IFoodService
         var foods = await _db.Foods.Include(f => f.Category).ProjectToType<GetAllFoods.Response>().ToListAsync(cancellationToken);
         if (!foods.Any())
         {
-            return Error.NotFound("GetAllFoods", "Coudnt find any food in the database");
+            return FoodErrors.NoFoodsAvaliable;
         }
         return foods;
     }

@@ -1,5 +1,6 @@
 ﻿using ErrorOr;
 using FluentValidation;
+using FoodStore.Server.Application.Foods.Error;
 using FoodStore.Server.Application.Services;
 using FoodStore.Server.Domain.Valueobjects;
 using FoodStore.Server.Infrastructure.DataModels;
@@ -31,12 +32,12 @@ public static class CreateFood
     {
         public CreateFoodCommandValidator()
         {
-            RuleFor(food => food.Name).MaximumLength(50).MinimumLength(3).NotEmpty().WithMessage("Food name can not be empty");
-            RuleFor(food => food.Description).MaximumLength(300).WithMessage("Food description can not be more than 300 char");
+            RuleFor(food => food.Name).MaximumLength(50).MinimumLength(3).NotEmpty().WithState(_ => FoodErrors.NameRequired);
+            RuleFor(food => food.Description).MaximumLength(300).WithState(_=>FoodErrors.DescriptionTooLong);
             RuleFor(food => food.FoodImage)
              .Must(image => image == null || image.Length <= 5 * 1024 * 1024)
-             .WithMessage("Food image size cannot exceed 5 MB");
-            RuleFor(food => food.FoodCategoryId).NotNull().NotEqual(0).WithMessage("FoodCategory must be identified");
+             .WithState(_=>FoodErrors.ImageTooLarge);
+            RuleFor(food => food.FoodCategoryId).NotNull().NotEqual(0).WithState(_=>FoodErrors.CategoryRequired);
         }
     }
     public class Handler : IRequestHandler<CreateFoodCommand, ErrorOr<Unit>>
