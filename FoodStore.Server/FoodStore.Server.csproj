@@ -9,7 +9,6 @@
     <SpaProxyServerUrl>https://localhost:51147</SpaProxyServerUrl>
     <UserSecretsId>f435b85a-b7eb-4ec2-9dbf-d9d3e5dd874f</UserSecretsId>
 	<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-	<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
 
   <ItemGroup>
