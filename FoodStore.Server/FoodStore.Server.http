@@ -1,4 +1,4 @@
-@FoodStore.Server_HostAddress = http://localhost:5106
+@FoodStore.Server_HostAddress = http://localhost:5107
 
 GET {{FoodStore.Server_HostAddress}}/weatherforecast/
 Accept: application/json
