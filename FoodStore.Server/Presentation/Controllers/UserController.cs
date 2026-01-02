@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FoodStore.Server.Presentation.Controllers
 {
-    [Authorize]
+    //[Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class UserController : ControllerBase
