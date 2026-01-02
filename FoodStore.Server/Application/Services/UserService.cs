@@ -6,11 +6,13 @@ using FoodStore.Server.Identity;
 using FoodStore.Server.Identity.DataModels;
 using FoodStore.Server.Infrastructure.DataModels;
 using FoodStore.Server.Settings;
+using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -109,37 +111,80 @@ namespace FoodStore.Server.Application.Services
             // Return the valid refresh token
             return existingToken.Token;
         }
-        public async Task<string> AddRoleAsync(AddRole addRoleRequest)
+        public async Task<ErrorOr<Success>> AddRoleAsync(AddRole.Request addRoleRequest)
         {
             var user = await _userManager.FindByEmailAsync(addRoleRequest.Email);
-            if (user == null)
-                return $"No account registered with {addRoleRequest.Email}.";
-
-            if (!await _userManager.CheckPasswordAsync(user, addRoleRequest.Password))
-                return $"Incorrect credentials for user {user.Email}.";
+            if (user == null || !await _userManager.CheckPasswordAsync(user, addRoleRequest.Password))
+                return Error.NotFound($"Incorrect Email or Password");
 
             if (!Enum.TryParse<UserRole>(addRoleRequest.Role, true, out var validRole))
-                return $"Role {addRoleRequest.Role} not found.";
+                return Error.NotFound($"Role {addRoleRequest.Role} not found.");
 
             if (validRole == UserRole.Admin)
-                return $"You can't assign {addRoleRequest.Role} role to any user.";
+                return Error.Forbidden($"You can't assign {addRoleRequest.Role} role to any user.");
 
             var existingRoles = await _userManager.GetRolesAsync(user);
             if (existingRoles.Any())
             {
                 var removeResult = await _userManager.RemoveFromRolesAsync(user, existingRoles);
                 if (!removeResult.Succeeded)
-                    return $"Failed to remove old roles.";
+                    return Error.Failure($"Failed to remove old roles.");
             }
 
             var addResult = await _userManager.AddToRoleAsync(user, validRole.ToString());
             if (!addResult.Succeeded)
-                return $"Failed to add role.";
+                return Error.Failure($"Failed to add role.");
 
-            return $"Success: Role {validRole} assigned to user {addRoleRequest.Email}.";
+            return Result.Success;
         }
-        
 
- 
+        public async Task<ErrorOr<LoginUserWithRefreshToken.Response>> LoginUserWithRefreshTokenAsync(LoginUserWithRefreshToken.Request request)
+        {
+          
+            RefreshToken? refreshToken = await _userDbContext.RefreshTokens
+                 .Include(r => r.User)
+                 .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken);
+            if (refreshToken is null || refreshToken.ExpiresOnUtc < DateTime.UtcNow)
+            {
+                return Error.NotFound("RefreshToken.Invalid", "The provided refresh token is invalid or has expired.");
+            }
+
+            string newAcessToken = await _tokenProvider.GenerateAcessTokenAsync(refreshToken.User);
+            string newRefreshTokenString = _tokenProvider.GenerateRefreshToken();
+            // Update the existing refresh token
+            refreshToken.Token = newRefreshTokenString;
+            refreshToken.ExpiresOnUtc = DateTime.UtcNow.AddDays(7);
+            await _userDbContext.SaveChangesAsync();
+            return new LoginUserWithRefreshToken.Response(newAcessToken, newRefreshTokenString);
+        }
+        public async Task<ErrorOr<Success>> RevokeRefreshTokensAsync(RevokeRefreshTokens.Request request)
+        {
+            // Get the logged-in user's ID from JWT
+            var currentUserId = GetCurrentUserId();
+            if (currentUserId is null)
+            {
+                return Error.Forbidden("Auth.InvalidUser", "Could not determine the current user.");
+            }
+
+            // Ensure the user is only revoking their own refresh tokens
+            if (request.UserId != currentUserId)
+            {
+                return Error.Forbidden("RevokingRefreshToken", "You cannot revoke refresh tokens for another user.");
+            }
+
+            // Convert to GUID to match the RefreshToken.UserId property
+            if (!Guid.TryParse(request.UserId, out Guid parsedUserId))
+            {
+                return Error.Validation("User.InvalidId", "User ID is not a valid GUID.");
+            }
+
+            // Perform fast SQL DELETE
+            await _userDbContext.RefreshTokens
+                .Where(r => r.UserId == request.UserId)
+                .ExecuteDeleteAsync();
+
+            return Result.Success;
+        }
+
     }
 }

@@ -1,6 +1,7 @@
 ﻿using ErrorOr;
 using FoodStore.Server.Application.Users.Commands;
 using FoodStore.Server.Infrastructure.DataModels;
+using MediatR;
 
 namespace FoodStore.Server.Application.Services
 {
@@ -8,6 +9,8 @@ namespace FoodStore.Server.Application.Services
     {
         Task<ErrorOr<RegisterUser.Response>> RegisterAsync(RegisterUser.Request registerRequest);
         Task<ErrorOr<LoginUser.Response>> LoginAsync(LoginUser.Request loginRequest);
-        Task<string> AddRoleAsync(AddRole addRoleRequest);
+        Task<ErrorOr<Success>> AddRoleAsync(AddRole.Request addRoleRequest);
+        Task<ErrorOr<LoginUserWithRefreshToken.Response>> LoginUserWithRefreshTokenAsync(LoginUserWithRefreshToken.Request request);
+        Task<ErrorOr<Success>> RevokeRefreshTokensAsync(RevokeRefreshTokens.Request request);
     }
 }
