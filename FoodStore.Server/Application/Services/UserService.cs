@@ -24,98 +24,114 @@ namespace FoodStore.Server.Application.Services
             _jwt = jwt.Value;
         }
 
-        public async Task<string> RegisterAsync(Register register)
+        public async Task<Authentication> RegisterAsync(Register registerRequest)
         {
+            var validationError = ValidateRegister(registerRequest);
+            if (validationError != null)
+                return AuthFailed(validationError);
 
-            var usernameResult = Username.Create(register.Username);
-            var emailResult = Email.Create(register.Email);
-            var passwordResult = Password.Create(register.Password);
+            if (await _userManager.FindByNameAsync(registerRequest.Username) != null)
+                return AuthFailed($"Username {registerRequest.Username} is already taken.");
 
-
-            if (usernameResult.IsError)
-            {
-                return usernameResult.Errors[0].Description;
-            }
-
-            if (emailResult.IsError)
-            {
-                return emailResult.Errors[0].Description;
-            }
-
-            if (passwordResult.IsError)
-            {
-                return passwordResult.Errors[0].Description;
-            }
+            if (await _userManager.FindByEmailAsync(registerRequest.Email) != null)
+                return AuthFailed($"Email {registerRequest.Email} is already registered.");
 
             var user = new ApplicationUser
             {
-                UserName = register.Username,
-                FirstName = register.FirstName,
-                LastName = register.LastName,
-                Email = register.Email,
-                PhoneNumber = register.PhoneNumber,
-                Address = register.Address,
+                UserName = registerRequest.Username,
+                FirstName = registerRequest.FirstName,
+                LastName = registerRequest.LastName,
+                Email = registerRequest.Email,
+                PhoneNumber = registerRequest.PhoneNumber,
+                Address = registerRequest.Address
             };
 
-            var userWithSameUsername = await _userManager.FindByNameAsync(register.Username);
-            var userWithSameEmail = await _userManager.FindByEmailAsync(register.Email);
+            var result = await _userManager.CreateAsync(user, registerRequest.Password);
+            if (!result.Succeeded)
+                return AuthFailed(result.Errors.First().Description);
 
-            if (userWithSameUsername != null)
-            {
-                return $"Username {user.UserName} is already taken.";
-            }
+            if (!await _roleManager.RoleExistsAsync(UserRole.Customer.ToString()))
+                await _roleManager.CreateAsync(new IdentityRole(UserRole.Customer.ToString()));
 
-            if (userWithSameEmail != null)
-            {
-                return $"Email {user.Email} is already registered.";
-            }
+            await _userManager.AddToRoleAsync(user, UserRole.Customer.ToString());
 
-            var result = await _userManager.CreateAsync(user, register.Password);
-            if (result.Succeeded)
-            {
-                var roleExists = await _roleManager.RoleExistsAsync(UserRole.Customer.ToString());
-                await _userManager.AddToRoleAsync(user, UserRole.Customer.ToString());
-            }
-
-            return $"Success: User registered with email {user.Email}";
+            return await GenerateAuthentication(user);
         }
-        public async Task<Authentication> GetTokenAsync(TokenRequest tokenRequest)
+        public async Task<Authentication> LoginAsync(Login loginRequest)
         {
-            var authenticationModel = new Authentication();
-            var user = await _userManager.FindByEmailAsync(tokenRequest.Email);
+            var user = await _userManager.FindByEmailAsync(loginRequest.Email);
+            if (user == null || !await _userManager.CheckPasswordAsync(user, loginRequest.Password))
+                return AuthFailed($"Incorrect credentials for {loginRequest.Email}.");
 
-
+            return await GenerateAuthentication(user);
+        }
+        public async Task<string> AddRoleAsync(AddRole addRoleRequest)
+        {
+            var user = await _userManager.FindByEmailAsync(addRoleRequest.Email);
             if (user == null)
+                return $"No account registered with {addRoleRequest.Email}.";
+
+            if (!await _userManager.CheckPasswordAsync(user, addRoleRequest.Password))
+                return $"Incorrect credentials for user {user.Email}.";
+
+            if (!Enum.TryParse<UserRole>(addRoleRequest.Role, true, out var validRole))
+                return $"Role {addRoleRequest.Role} not found.";
+
+            if (validRole == UserRole.Admin)
+                return $"You can't assign {addRoleRequest.Role} role to any user.";
+
+            var existingRoles = await _userManager.GetRolesAsync(user);
+            if (existingRoles.Any())
             {
-
-                authenticationModel.IsAuthenticated = false;
-                authenticationModel.Message = $"No Accounts Registered with {tokenRequest.Email}.";
-                return authenticationModel;
+                var removeResult = await _userManager.RemoveFromRolesAsync(user, existingRoles);
+                if (!removeResult.Succeeded)
+                    return $"Failed to remove old roles.";
             }
-            if (await _userManager.CheckPasswordAsync(user, tokenRequest.Password))
+
+            var addResult = await _userManager.AddToRoleAsync(user, validRole.ToString());
+            if (!addResult.Succeeded)
+                return $"Failed to add role.";
+
+            return $"Success: Role {validRole} assigned to user {addRoleRequest.Email}.";
+        }
+        private string? ValidateRegister(Register register)
+        {
+            var usernameResult = Username.Create(register.Username);
+            if (usernameResult.IsError) return usernameResult.Errors[0].Description;
+
+            var emailResult = Email.Create(register.Email);
+            if (emailResult.IsError) return emailResult.Errors[0].Description;
+
+            var passwordResult = Password.Create(register.Password);
+            if (passwordResult.IsError) return passwordResult.Errors[0].Description;
+
+            return null;
+        }
+        private Authentication AuthFailed(string message) => new()
+        {
+            IsAuthenticated = false,
+            Message = message
+        };
+        private async Task<Authentication> GenerateAuthentication(ApplicationUser user)
+        {
+            var token = await CreateJwtToken(user);
+            var roles = await _userManager.GetRolesAsync(user);
+
+            return new Authentication
             {
-                authenticationModel.IsAuthenticated = true;
-                JwtSecurityToken jwtSecurityToken = await CreateJwtToken(user);
-
-                authenticationModel.Token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken);
-                authenticationModel.Email = user.Email!;
-                authenticationModel.Username = user.UserName!;
-
-                var roles = await _userManager.GetRolesAsync(user);
-                authenticationModel.Role = roles.FirstOrDefault() ?? UserRole.Customer.ToString();
-
-                return authenticationModel;
-            }
-            authenticationModel.IsAuthenticated = false;
-            authenticationModel.Message = $"Incorrect Credentials for user {user.Email}.";
-            return authenticationModel;
+                IsAuthenticated = true,
+                Token = new JwtSecurityTokenHandler().WriteToken(token),
+                Email = user.Email!,
+                Username = user.UserName!,
+                Role = roles.FirstOrDefault() ?? UserRole.Customer.ToString(),
+                Message = "Success"
+            };
         }
         private async Task<JwtSecurityToken> CreateJwtToken(ApplicationUser user)
         {
             var userClaims = await _userManager.GetClaimsAsync(user);
             var roles = await _userManager.GetRolesAsync(user);
             var role = roles.FirstOrDefault() ?? UserRole.Customer.ToString();
-
 
             var claims = new List<Claim>
             {
@@ -139,35 +155,5 @@ namespace FoodStore.Server.Application.Services
                 signingCredentials: signingCredentials);
             return jwtSecurityToken;
         }
-        public async Task<string> AddRoleAsync(RoleAssignee roleAssignee)
-        {
-            var user = await _userManager.FindByEmailAsync(roleAssignee.Email);
-            if (user == null)
-                return $"No account registered with {roleAssignee.Email}.";
-
-            if (!await _userManager.CheckPasswordAsync(user, roleAssignee.Password))
-                return $"Incorrect credentials for user {user.Email}.";
-
-            if (!Enum.TryParse<UserRole>(roleAssignee.Role, true, out var validRole))
-                return $"Role {roleAssignee.Role} not found.";
-
-            if (validRole == UserRole.Admin)
-                return $"You can't assign {roleAssignee.Role} role to any user.";
-
-            var existingRoles = await _userManager.GetRolesAsync(user);
-            if (existingRoles.Any())
-            {
-                var removeResult = await _userManager.RemoveFromRolesAsync(user, existingRoles);
-                if (!removeResult.Succeeded)
-                    return $"Failed to remove old roles.";
-            }
-
-            var addResult = await _userManager.AddToRoleAsync(user, validRole.ToString());
-            if (!addResult.Succeeded)
-                return $"Failed to add role.";
-
-            return $"Success: Role {validRole} assigned to user {roleAssignee.Email}.";
-        }
-
     }
 }

@@ -4,8 +4,8 @@ namespace FoodStore.Server.Application.Services
 {
     public interface IUserService
     {
-        Task<string> RegisterAsync(Register register);
-        Task<Authentication> GetTokenAsync(TokenRequest tokenRequest);
-        Task<string> AddRoleAsync(RoleAssignee roleAssignee);
+        Task<Authentication> RegisterAsync(Register registerRequest);
+        Task<Authentication> LoginAsync(Login loginRequest);
+        Task<string> AddRoleAsync(AddRole addRoleRequest);
     }
 }

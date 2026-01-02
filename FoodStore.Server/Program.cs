@@ -105,7 +105,6 @@ using (var scope = app.Services.CreateScope())
         if (!exists)
         {
             await roleManager.CreateAsync(new IdentityRole(roleName));
-            Console.WriteLine($"Role created: {roleName}");
         }
     }
 }
