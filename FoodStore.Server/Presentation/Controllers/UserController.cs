@@ -1,5 +1,8 @@
 ﻿using FoodStore.Server.Application.Services;
+using FoodStore.Server.Application.Users.Commands;
+using FoodStore.Server.Domain.Valueobjects;
 using FoodStore.Server.Infrastructure.DataModels;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,10 +13,10 @@ namespace FoodStore.Server.Presentation.Controllers
     public class UserController : ControllerBase
     {
 
-        private readonly IUserService _userService;
-        public UserController(IUserService userService)
+        private readonly IMediator _mediator;
+        public UserController(IMediator mediator)
         {
-            _userService = userService;
+            _mediator = mediator;
         }
 
         [Authorize]
@@ -23,26 +26,74 @@ namespace FoodStore.Server.Presentation.Controllers
             return Ok("This Secured Data is available only for Authenticated Users.");
         }
 
-        [HttpPost("Register")]
-        public async Task<ActionResult> RegisterAsync(Register registerRequest)
+        [HttpPost("register")]
+        public async Task<ActionResult> RegisterAsync(RegisterUser.Request registerRequest)
         {
-            var result = await _userService.RegisterAsync(registerRequest);
-            return !result.IsAuthenticated ? BadRequest(result) : Ok(result);
+            var result = await _mediator.Send(registerRequest);
+            return result.Match<ActionResult>(
+          // SUCCESS
+          response => Ok(new RegisterUser.Response
+          {
+              UserId = response.UserId,
+              UserName = response.UserName,
+              Email = response.Email
+          }),
+
+          // ERROR
+          errors => BadRequest(errors)
+            );
         }
 
-        [HttpPost("Login")]
-        public async Task<IActionResult> LoginAsync(Login loginRequest)
+        [HttpPost("login")]
+        public async Task<IActionResult> LoginAsync(LoginUser.Request loginRequest)
         {
-            var result = await _userService.LoginAsync(loginRequest);
-            return !result.IsAuthenticated? BadRequest(result): Ok(result);
+            var result = await _mediator.Send(loginRequest);
+            return result.Match<ActionResult>(
+                // SUCCESS: construct response using the constructor that accepts tokens
+                response => Ok(new LoginUser.Response(response.AcessToken, response.RefreshToken)),
+
+                // ERROR
+                errors => BadRequest(errors)
+            );
         }
 
-        [HttpPost("Add-Role")]
+        [HttpPost("add-role")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> AddRoleAsync(AddRole addRoleRequest)
+        public async Task<IActionResult> AddRoleAsync(AddRole.Request addRoleRequest)
         {
-            var result = await _userService.AddRoleAsync(addRoleRequest);
-            return !result.StartsWith("Success:") ? BadRequest(result) : Ok(result);
+            var result = await _mediator.Send(addRoleRequest);
+            return result.Match<ActionResult>(
+           // SUCCESS: construct response using the constructor that accepts tokens
+           response => Ok(),
+           // ERROR
+           errors => BadRequest(errors)
+           );
+        }
+        [Authorize]
+        [HttpDelete("revoke-refresh-tokens/{userId}")]
+        public async Task<IActionResult> RevokeUserRefreshTokens(RevokeRefreshTokens.Request request)
+        {
+            var result = await _mediator.Send(request);
+
+            return result.Match<ActionResult>(
+                // SUCCESS
+                _ => Ok(new { message = "Refresh tokens revoked successfully." }),
+
+                // ERROR
+                errors => BadRequest(errors)
+            );
+        }
+        [HttpPost("login/refresh-token")]
+        public async Task<IActionResult> LoginUserWithRefreshToken(LoginUserWithRefreshToken.Request request)
+        {
+            var result = await _mediator.Send(request);
+            return result.Match<ActionResult>(
+                     // SUCCESS CASE
+                     response => Ok( new LoginUser.Response(response.AccessToken, response.RefreshToken)),
+
+                     // ERROR CASE
+                     errors => BadRequest(errors)
+                 );
         }
     }
 }
