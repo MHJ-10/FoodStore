@@ -13,7 +13,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FoodStore.Server.Migrations
 {
     [DbContext(typeof(FoodStoreDbContext))]
-    [Migration("20260101182521_initial")]
+    [Migration("20260102094011_initial")]
     partial class initial
     {
         /// <inheritdoc />
@@ -33,6 +33,9 @@ namespace FoodStore.Server.Migrations
 
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
+
+                    b.Property<string>("Address")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()

@@ -17,7 +17,7 @@ namespace FoodStore.Server.Presentation.Controllers
             _userService = userService;
         }
 
-
+        [Authorize]
         [HttpGet]
         public IActionResult GetSecuredData()
         {
@@ -28,7 +28,16 @@ namespace FoodStore.Server.Presentation.Controllers
         public async Task<ActionResult> ModelAsync(Register register)
         {
             var result = await _userService.RegisterAsync(register);
-            return Ok(result);
+
+            return !result.StartsWith("Success:") ? BadRequest(result) : Ok(result);
+        }
+
+        [HttpPost("Token")]
+        public async Task<IActionResult> GetTokenAsync(TokenRequest tokenRequest)
+        {
+            var result = await _userService.GetTokenAsync(tokenRequest);
+
+            return !result.IsAuthenticated? BadRequest(result): Ok(result);
         }
     }
 }

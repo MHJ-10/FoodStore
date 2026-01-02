@@ -6,6 +6,5 @@
         Manager = 1,
         Customer = 2,
         Rider = 3
-
     }
 }

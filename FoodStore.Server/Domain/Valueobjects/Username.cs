@@ -5,22 +5,22 @@ using System.Text.RegularExpressions;
 namespace FoodStore.Server.Domain.Valueobjects;
 
 [ComplexType]
-public class Password : ValueObject
+public class Username : ValueObject
 {
-    [Column("Password")]
+    [Column("Username")]
     public string Value { get; init; }
-    private Password(string value)
+    private Username(string value)
     {
         Value = value;
     }
-    private Password() { }
-    public static ErrorOr<Password> Create(string value)
+    private Username() { }
+    public static ErrorOr<Username> Create(string value)
     {
         if (string.IsNullOrEmpty(value))
-            return Error.Validation("Password.NullOrEmpty", "Password can not be null or empty");
+            return Error.Validation("Username.NullOrEmpty", "Username can not be null or empty");
         if (!IsValid(value))
-            return Error.Validation("Password.InvalidFormat", "Password must be 8+ characters with uppercase, lowercase, and a number.");
-        return new Password(value);
+            return Error.Validation("Username.InvalidFormat", "Username must be 3-20 chars, start with a letter, and contain only letters, numbers, . or _.");
+        return new Username(value);
     }
 
     protected override IEnumerable<object> GetEqualityComponents()
@@ -29,7 +29,7 @@ public class Password : ValueObject
     }
     private static bool IsValid(string password)
     {
-        var pattern = @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$_#!*%&(). ]{8,}$";
+        var pattern = @"^(?!.*[._]{2})[a-zA-Z][a-zA-Z0-9._]{2,19}$";
         return Regex.IsMatch(password, pattern);
     }
 }

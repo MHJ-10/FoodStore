@@ -3,6 +3,7 @@ using FoodStore.Server.Application.Behaviors;
 using FoodStore.Server.Application.Foods.Commands;
 using FoodStore.Server.Application.Middlewares;
 using FoodStore.Server.Application.Services;
+using FoodStore.Server.Domain.Enums;
 using FoodStore.Server.Infrastructure;
 using FoodStore.Server.Infrastructure.DataModels;
 using FoodStore.Server.Settings;
@@ -84,7 +85,30 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddRouting(options =>
+{
+    options.LowercaseUrls = true;
+});
+
+
 var app = builder.Build();
+
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+
+    foreach (var roleName in Enum.GetNames(typeof(UserRole)))
+    {
+        var exists = await roleManager.RoleExistsAsync(roleName);
+        if (!exists)
+        {
+            await roleManager.CreateAsync(new IdentityRole(roleName));
+            Console.WriteLine($"Role created: {roleName}");
+        }
+    }
+}
 
 // Middleware Pipeline
 
