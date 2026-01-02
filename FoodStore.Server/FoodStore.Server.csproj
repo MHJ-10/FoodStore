@@ -48,4 +48,8 @@
     </ProjectReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Application\Users\Queries\" />
+  </ItemGroup>
+
 </Project>

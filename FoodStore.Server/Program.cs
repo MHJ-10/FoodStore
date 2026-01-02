@@ -4,13 +4,14 @@ using FoodStore.Server.Application.Foods.Commands;
 using FoodStore.Server.Application.Middlewares;
 using FoodStore.Server.Application.Services;
 using FoodStore.Server.Domain.Enums;
+using FoodStore.Server.Identity.DataModels;
 using FoodStore.Server.Infrastructure;
-using FoodStore.Server.Infrastructure.DataModels;
 using FoodStore.Server.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Serilog;
 using System.Text;
 
@@ -24,8 +25,7 @@ builder.Host.UseSerilog((context, services, configuration) =>
         .Enrich.FromLogContext());
 
 // Services
-builder.Services.Configure<Jwt>(
-    builder.Configuration.GetSection(nameof(Jwt)));
+builder.Services.Configure<JwtConfiguration>(builder.Configuration.GetSection(nameof(JwtConfiguration)));
 
 builder.Services.AddDbContext<FoodStoreDbContext>(options =>
     options.UseSqlServer(
@@ -40,35 +40,36 @@ builder.Services
     .AddEntityFrameworkStores<FoodStoreDbContext>()
     .AddDefaultTokenProviders();
 
+// load typed config so we use the same values for creation and validation
+var jwtConfig = builder.Configuration
+    .GetSection(nameof(JwtConfiguration))
+    .Get<JwtConfiguration>() ?? throw new InvalidOperationException("Missing JwtConfiguration section");
+// configure authentication/validation with the same secret used by TokenProvider
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
+}).AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false;
-    options.SaveToken = false;
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig.SecretKey)),
         ValidateIssuer = true,
+        ValidIssuer = jwtConfig.Issuer,
         ValidateAudience = true,
+        ValidAudience = jwtConfig.Audience,
         ValidateLifetime = true,
-        ClockSkew = TimeSpan.Zero,
-
-        ValidIssuer = builder.Configuration["JWT:Issuer"],
-        ValidAudience = builder.Configuration["JWT:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(builder.Configuration["JWT:Key"]!))
+        ClockSkew = TimeSpan.FromSeconds(30)
     };
 });
 
-builder.Services.AddAuthorization();
 
+builder.Services.AddAuthorization();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFoodService, FoodService>();
-
+builder.Services.AddScoped<TokenProvider>();
 builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssemblies(typeof(CreateFood).Assembly);
@@ -83,7 +84,39 @@ builder.Services.AddProblemDetails();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(o =>
+{
+    o.CustomSchemaIds(id => id.FullName!.Replace('+', '-'));
+
+    var securityScheme = new OpenApiSecurityScheme
+    {
+        Name = "JWT Authentication",
+        Description = "Enter your JWT token in this field",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = JwtBearerDefaults.AuthenticationScheme,
+        BearerFormat = "JWT"
+    };
+
+    o.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme, securityScheme);
+
+    var securityRequirement = new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = JwtBearerDefaults.AuthenticationScheme
+                }
+            },
+            new string[] {}
+        }
+    };
+
+    o.AddSecurityRequirement(securityRequirement);
+});
 
 builder.Services.AddRouting(options =>
 {
@@ -93,21 +126,6 @@ builder.Services.AddRouting(options =>
 
 var app = builder.Build();
 
-
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
-
-    foreach (var roleName in Enum.GetNames(typeof(UserRole)))
-    {
-        var exists = await roleManager.RoleExistsAsync(roleName);
-        if (!exists)
-        {
-            await roleManager.CreateAsync(new IdentityRole(roleName));
-        }
-    }
-}
 
 // Middleware Pipeline
 

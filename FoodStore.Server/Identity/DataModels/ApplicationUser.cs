@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 
 
-namespace FoodStore.Server.Infrastructure.DataModels
+namespace FoodStore.Server.Identity.DataModels
 {
     public class ApplicationUser : IdentityUser
     {

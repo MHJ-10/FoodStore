@@ -1,4 +1,5 @@
-﻿using FoodStore.Server.Infrastructure.DataModels;
+﻿using FoodStore.Server.Identity.DataModels;
+using FoodStore.Server.Infrastructure.DataModels;
 using FoodStore.Server.Infrastructure.FluentApi;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;

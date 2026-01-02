@@ -1,8 +1,14 @@
-﻿using FoodStore.Server.Domain.Enums;
+﻿using ErrorOr;
+using FoodStore.Server.Application.Users.Commands;
+using FoodStore.Server.Domain.Enums;
 using FoodStore.Server.Domain.Valueobjects;
+using FoodStore.Server.Identity;
+using FoodStore.Server.Identity.DataModels;
 using FoodStore.Server.Infrastructure.DataModels;
 using FoodStore.Server.Settings;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -15,55 +21,93 @@ namespace FoodStore.Server.Application.Services
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly Jwt _jwt;
+        private readonly TokenProvider _tokenProvider;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly UserDbContext _userDbContext;
 
-        public UserService(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, IOptions<Jwt> jwt)
+        public UserService(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager,IHttpContextAccessor httpContextAccessor)
         {
             _userManager = userManager;
             _roleManager = roleManager;
-            _jwt = jwt.Value;
+            _httpContextAccessor = httpContextAccessor;
+        }
+        private string? GetCurrentUserId()
+        {
+            var userIdString = _httpContextAccessor.HttpContext?
+                .User
+                .FindFirstValue(ClaimTypes.NameIdentifier);
+            return userIdString;
         }
 
-        public async Task<Authentication> RegisterAsync(Register registerRequest)
+        public async Task<ErrorOr<RegisterUser.Response>> RegisterAsync(RegisterUser.Request registerRequest)
         {
-            var validationError = ValidateRegister(registerRequest);
-            if (validationError != null)
-                return AuthFailed(validationError);
-
-            if (await _userManager.FindByNameAsync(registerRequest.Username) != null)
-                return AuthFailed($"Username {registerRequest.Username} is already taken.");
-
-            if (await _userManager.FindByEmailAsync(registerRequest.Email) != null)
-                return AuthFailed($"Email {registerRequest.Email} is already registered.");
-
-            var user = new ApplicationUser
+            var user = new ApplicationUser()
             {
-                UserName = registerRequest.Username,
                 FirstName = registerRequest.FirstName,
                 LastName = registerRequest.LastName,
-                Email = registerRequest.Email,
+                UserName = registerRequest.UserName,
                 PhoneNumber = registerRequest.PhoneNumber,
+                Email = registerRequest.Email,
                 Address = registerRequest.Address
             };
-
             var result = await _userManager.CreateAsync(user, registerRequest.Password);
             if (!result.Succeeded)
-                return AuthFailed(result.Errors.First().Description);
-
-            if (!await _roleManager.RoleExistsAsync(UserRole.Customer.ToString()))
-                await _roleManager.CreateAsync(new IdentityRole(UserRole.Customer.ToString()));
-
-            await _userManager.AddToRoleAsync(user, UserRole.Customer.ToString());
-
-            return await GenerateAuthentication(user);
+            {
+                return result.Errors
+                    .Select(e => Error.Validation(
+                        code: e.Code,
+                        description: e.Description))
+                    .ToList();
+            }
+            return new RegisterUser.Response()
+            {
+                UserId = user.Id,
+                UserName = user.UserName,
+                Email = user.Email,
+            };
+           
         }
-        public async Task<Authentication> LoginAsync(Login loginRequest)
+        public async Task<ErrorOr<LoginUser.Response>> LoginAsync(LoginUser.Request loginRequest)
         {
             var user = await _userManager.FindByEmailAsync(loginRequest.Email);
             if (user == null || !await _userManager.CheckPasswordAsync(user, loginRequest.Password))
-                return AuthFailed($"Incorrect credentials for {loginRequest.Email}.");
+                return Error.NotFound("Invalid Email or Password");
 
-            return await GenerateAuthentication(user);
+            string acessToken = await _tokenProvider.GenerateAcessTokenAsync(user);
+            string refreshToken = await GetOrCreateRefreshTokenAsync(user);
+
+            return new LoginUser.Response(acessToken, refreshToken);
+        }
+        private async Task<string> GetOrCreateRefreshTokenAsync(ApplicationUser user)
+        {
+            var existingToken = await _userDbContext.RefreshTokens
+                .FirstOrDefaultAsync(r => r.UserId == user.Id);
+
+            if (existingToken is null || existingToken.ExpiresOnUtc < DateTime.UtcNow)
+            {
+                // Create new or update expired refresh token
+                if (existingToken is null)
+                {
+                    existingToken = new RefreshToken
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = user.Id,
+                        ExpiresOnUtc = DateTime.UtcNow.AddDays(7),
+                        Token = _tokenProvider.GenerateRefreshToken()
+                    };
+                    _userDbContext.RefreshTokens.Add(existingToken);
+                }
+                else
+                {
+                    existingToken.Token = _tokenProvider.GenerateRefreshToken();
+                    existingToken.ExpiresOnUtc = DateTime.UtcNow.AddDays(7);
+                }
+
+                await _userDbContext.SaveChangesAsync();
+            }
+
+            // Return the valid refresh token
+            return existingToken.Token;
         }
         public async Task<string> AddRoleAsync(AddRole addRoleRequest)
         {
@@ -94,66 +138,8 @@ namespace FoodStore.Server.Application.Services
 
             return $"Success: Role {validRole} assigned to user {addRoleRequest.Email}.";
         }
-        private string? ValidateRegister(Register register)
-        {
-            var usernameResult = Username.Create(register.Username);
-            if (usernameResult.IsError) return usernameResult.Errors[0].Description;
+        
 
-            var emailResult = Email.Create(register.Email);
-            if (emailResult.IsError) return emailResult.Errors[0].Description;
-
-            var passwordResult = Password.Create(register.Password);
-            if (passwordResult.IsError) return passwordResult.Errors[0].Description;
-
-            return null;
-        }
-        private Authentication AuthFailed(string message) => new()
-        {
-            IsAuthenticated = false,
-            Message = message
-        };
-        private async Task<Authentication> GenerateAuthentication(ApplicationUser user)
-        {
-            var token = await CreateJwtToken(user);
-            var roles = await _userManager.GetRolesAsync(user);
-
-            return new Authentication
-            {
-                IsAuthenticated = true,
-                Token = new JwtSecurityTokenHandler().WriteToken(token),
-                Email = user.Email!,
-                Username = user.UserName!,
-                Role = roles.FirstOrDefault() ?? UserRole.Customer.ToString(),
-                Message = "Success"
-            };
-        }
-        private async Task<JwtSecurityToken> CreateJwtToken(ApplicationUser user)
-        {
-            var userClaims = await _userManager.GetClaimsAsync(user);
-            var roles = await _userManager.GetRolesAsync(user);
-            var role = roles.FirstOrDefault() ?? UserRole.Customer.ToString();
-
-            var claims = new List<Claim>
-            {
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email!),
-                new Claim(JwtRegisteredClaimNames.Sub, user.UserName!),
-                new Claim(ClaimTypes.Role, role),
-                new Claim("uid", user.Id)
-            };
-
-            claims.AddRange(userClaims);
-
-            var symmetricSecurityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwt.Key));
-            var signingCredentials = new SigningCredentials(symmetricSecurityKey, SecurityAlgorithms.HmacSha256);
-
-            var jwtSecurityToken = new JwtSecurityToken(
-                issuer: _jwt.Issuer,
-                audience: _jwt.Audience,
-                claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(_jwt.DurationInMinutes),
-                signingCredentials: signingCredentials);
-            return jwtSecurityToken;
-        }
+ 
     }
 }

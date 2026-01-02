@@ -1,8 +1,8 @@
-﻿using FoodStore.Server.Infrastructure.DataModels;
+﻿using FoodStore.Server.Identity.DataModels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace FoodStore.Server.Infrastructure.FluentApi
+namespace FoodStore.Server.Identity.FluentApi
 {
     public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
     {
