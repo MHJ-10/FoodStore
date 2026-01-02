@@ -5,7 +5,6 @@ using FoodStore.Server.Settings;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using NuGet.Packaging;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -80,7 +79,6 @@ namespace FoodStore.Server.Application.Services
 
             return $"Success: User registered with email {user.Email}";
         }
-
         public async Task<Authentication> GetTokenAsync(TokenRequest tokenRequest)
         {
             var authenticationModel = new Authentication();
@@ -141,5 +139,35 @@ namespace FoodStore.Server.Application.Services
                 signingCredentials: signingCredentials);
             return jwtSecurityToken;
         }
+        public async Task<string> AddRoleAsync(RoleAssignee roleAssignee)
+        {
+            var user = await _userManager.FindByEmailAsync(roleAssignee.Email);
+            if (user == null)
+                return $"No account registered with {roleAssignee.Email}.";
+
+            if (!await _userManager.CheckPasswordAsync(user, roleAssignee.Password))
+                return $"Incorrect credentials for user {user.Email}.";
+
+            if (!Enum.TryParse<UserRole>(roleAssignee.Role, true, out var validRole))
+                return $"Role {roleAssignee.Role} not found.";
+
+            if (validRole == UserRole.Admin)
+                return $"You can't assign {roleAssignee.Role} role to any user.";
+
+            var existingRoles = await _userManager.GetRolesAsync(user);
+            if (existingRoles.Any())
+            {
+                var removeResult = await _userManager.RemoveFromRolesAsync(user, existingRoles);
+                if (!removeResult.Succeeded)
+                    return $"Failed to remove old roles.";
+            }
+
+            var addResult = await _userManager.AddToRoleAsync(user, validRole.ToString());
+            if (!addResult.Succeeded)
+                return $"Failed to add role.";
+
+            return $"Success: Role {validRole} assigned to user {roleAssignee.Email}.";
+        }
+
     }
 }

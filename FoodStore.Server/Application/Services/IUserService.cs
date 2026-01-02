@@ -6,5 +6,6 @@ namespace FoodStore.Server.Application.Services
     {
         Task<string> RegisterAsync(Register register);
         Task<Authentication> GetTokenAsync(TokenRequest tokenRequest);
+        Task<string> AddRoleAsync(RoleAssignee roleAssignee);
     }
 }
