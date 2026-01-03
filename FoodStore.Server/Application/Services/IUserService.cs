@@ -12,5 +12,6 @@ namespace FoodStore.Server.Application.Services
         Task<ErrorOr<Success>> AddRoleAsync(AddRole.Request addRoleRequest);
         Task<ErrorOr<LoginUserWithRefreshToken.Response>> LoginUserWithRefreshTokenAsync(LoginUserWithRefreshToken.Request request);
         Task<ErrorOr<Success>> RevokeRefreshTokensAsync(RevokeRefreshTokens.Request request);
+        string? GetCurrentUserName();
     }
 }

@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using NuGet.Versioning;
 using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -27,7 +28,7 @@ namespace FoodStore.Server.Application.Services
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly UserDbContext _userDbContext;
 
-        public UserService(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager,IHttpContextAccessor httpContextAccessor)
+        public UserService(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, IHttpContextAccessor httpContextAccessor)
         {
             _userManager = userManager;
             _roleManager = roleManager;
@@ -40,19 +41,43 @@ namespace FoodStore.Server.Application.Services
                 .FindFirstValue(ClaimTypes.NameIdentifier);
             return userIdString;
         }
+        public string ?GetCurrentUserName()
+        {
+            var userName = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Name);
+            return userName;
+        }
 
         public async Task<ErrorOr<RegisterUser.Response>> RegisterAsync(RegisterUser.Request registerRequest)
         {
+            var email = Email.Create(registerRequest.Email);
+            var password = Password.Create(registerRequest.Password);
+            if (email.IsError)
+                return email.Errors;
+          
+            if (password.IsError)
+                return password.Errors;
+
+            PhoneNumber? phoneNumber = null;
+            if (!string.IsNullOrWhiteSpace(registerRequest.PhoneNumber))
+            {
+                var phoneResult = PhoneNumber.Create(registerRequest.PhoneNumber);
+                if (phoneResult.IsError)
+                    return phoneResult.Errors;
+
+                phoneNumber = phoneResult.Value;
+            }
+           
+
             var user = new ApplicationUser()
             {
                 FirstName = registerRequest.FirstName,
                 LastName = registerRequest.LastName,
                 UserName = registerRequest.UserName,
-                PhoneNumber = registerRequest.PhoneNumber,
-                Email = registerRequest.Email,
-                Address = registerRequest.Address
+                PhoneNumber = phoneNumber?.Value,
+                Email = email.Value.Value,
+                Address = registerRequest.Address,
             };
-            var result = await _userManager.CreateAsync(user, registerRequest.Password);
+            var result = await _userManager.CreateAsync(user, password.Value.Value);
             if (!result.Succeeded)
             {
                 return result.Errors
@@ -67,7 +92,7 @@ namespace FoodStore.Server.Application.Services
                 UserName = user.UserName,
                 Email = user.Email,
             };
-           
+
         }
         public async Task<ErrorOr<LoginUser.Response>> LoginAsync(LoginUser.Request loginRequest)
         {
@@ -140,7 +165,7 @@ namespace FoodStore.Server.Application.Services
 
         public async Task<ErrorOr<LoginUserWithRefreshToken.Response>> LoginUserWithRefreshTokenAsync(LoginUserWithRefreshToken.Request request)
         {
-          
+
             RefreshToken? refreshToken = await _userDbContext.RefreshTokens
                  .Include(r => r.User)
                  .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken);
