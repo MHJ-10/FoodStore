@@ -4,6 +4,7 @@ using FoodStore.Server.Application.Foods.Commands;
 using FoodStore.Server.Application.Middlewares;
 using FoodStore.Server.Application.Services;
 using FoodStore.Server.Domain.Enums;
+using FoodStore.Server.Identity;
 using FoodStore.Server.Identity.DataModels;
 using FoodStore.Server.Infrastructure;
 using FoodStore.Server.Settings;
@@ -31,6 +32,10 @@ builder.Services.AddDbContext<FoodStoreDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
         sql => sql.MigrationsAssembly(typeof(FoodStoreDbContext).Assembly.FullName)));
+builder.Services.AddDbContext<UserDbContext>(options =>
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("IdentityConnection"),
+        sql => sql.MigrationsAssembly(typeof(UserDbContext).Assembly.FullName)));
 
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole>(options =>
