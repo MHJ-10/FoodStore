@@ -27,12 +27,15 @@ namespace FoodStore.Server.Application.Services
         private readonly TokenProvider _tokenProvider;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly UserDbContext _userDbContext;
+        private readonly SignInManager<ApplicationUser> _signInManager;
 
-        public UserService(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, IHttpContextAccessor httpContextAccessor)
+        public UserService(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager,
+            IHttpContextAccessor httpContextAccessor, SignInManager<ApplicationUser> signInManager)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _httpContextAccessor = httpContextAccessor;
+            _signInManager = signInManager;
         }
         private string? GetCurrentUserId()
         {
@@ -41,7 +44,7 @@ namespace FoodStore.Server.Application.Services
                 .FindFirstValue(ClaimTypes.NameIdentifier);
             return userIdString;
         }
-        public string ?GetCurrentUserName()
+        public string? GetCurrentUserName()
         {
             var userName = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Name);
             return userName;
@@ -53,7 +56,7 @@ namespace FoodStore.Server.Application.Services
             var password = Password.Create(registerRequest.Password);
             if (email.IsError)
                 return email.Errors;
-          
+
             if (password.IsError)
                 return password.Errors;
 
@@ -66,7 +69,7 @@ namespace FoodStore.Server.Application.Services
 
                 phoneNumber = phoneResult.Value;
             }
-           
+
 
             var user = new ApplicationUser()
             {
@@ -210,6 +213,20 @@ namespace FoodStore.Server.Application.Services
 
             return Result.Success;
         }
+        public async Task<ErrorOr<Success>> DeleteUserAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user is null)
+                return Error.NotFound("User.NotFound", "User not found.");
 
+            var result = await _userManager.DeleteAsync(user);
+            if (!result.Succeeded)
+            {
+                return result.Errors
+                    .Select(e => Error.Validation(e.Code, e.Description))
+                    .ToList();
+            }
+            return Result.Success;
+        }
     }
 }

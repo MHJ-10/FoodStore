@@ -22,7 +22,6 @@ public class FoodStoreDbContext : IdentityDbContext<ApplicationUser>
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.ApplyConfiguration(new ApplicationUserConfiguration());
         modelBuilder.ApplyConfiguration(new FoodConfiguration());
         modelBuilder.ApplyConfiguration(new FoodCategoryConfiguration());
         modelBuilder.ApplyConfiguration(new CustomerConfiguration());

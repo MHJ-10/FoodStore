@@ -7,6 +7,7 @@ using FoodStore.Server.Domain.Enums;
 using FoodStore.Server.Identity;
 using FoodStore.Server.Identity.DataModels;
 using FoodStore.Server.Infrastructure;
+using FoodStore.Server.Infrastructure.Interceptor;
 using FoodStore.Server.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -28,14 +29,23 @@ builder.Host.UseSerilog((context, services, configuration) =>
 // Services
 builder.Services.Configure<JwtConfiguration>(builder.Configuration.GetSection(nameof(JwtConfiguration)));
 
-builder.Services.AddDbContext<FoodStoreDbContext>(options =>
+// Configure FoodStoreDbContext and attach SoftDeleteInterceptor
+builder.Services.AddDbContext<FoodStoreDbContext>((sp, options) =>
+{
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
-        sql => sql.MigrationsAssembly(typeof(FoodStoreDbContext).Assembly.FullName)));
-builder.Services.AddDbContext<UserDbContext>(options =>
+        sql => sql.MigrationsAssembly(typeof(FoodStoreDbContext).Assembly.FullName));
+    options.AddInterceptors(sp.GetRequiredService<SoftDeleteInterceptor>());
+});
+
+// Configure UserDbContext and attach SoftDeleteInterceptor
+builder.Services.AddDbContext<UserDbContext>((sp, options) =>
+{
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("IdentityConnection"),
-        sql => sql.MigrationsAssembly(typeof(UserDbContext).Assembly.FullName)));
+        sql => sql.MigrationsAssembly(typeof(UserDbContext).Assembly.FullName));
+    options.AddInterceptors(sp.GetRequiredService<SoftDeleteInterceptor>());
+});
 
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -75,6 +85,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFoodService, FoodService>();
 builder.Services.AddScoped<TokenProvider>();
+builder.Services.AddSingleton<SoftDeleteInterceptor>();
 builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssemblies(typeof(CreateFood).Assembly);

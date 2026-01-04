@@ -10,6 +10,7 @@ namespace FoodStore.Server.Identity.FluentApi
         {
             builder.Property(u => u.FirstName).IsRequired().HasMaxLength(50);
             builder.Property(u => u.LastName).IsRequired().HasMaxLength(50);
+            builder.HasQueryFilter(u => !u.IsDeleted);
         }
     }
 }
