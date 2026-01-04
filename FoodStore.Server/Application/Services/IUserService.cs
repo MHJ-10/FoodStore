@@ -14,5 +14,6 @@ namespace FoodStore.Server.Application.Services
         Task<ErrorOr<Success>> RevokeRefreshTokensAsync(RevokeRefreshTokens.Request request);
         string? GetCurrentUserName();
         Task<ErrorOr<Success>> DeleteUserAsync(string userId);
+        Task<ErrorOr<Success>> LogoutAsync();
     }
 }

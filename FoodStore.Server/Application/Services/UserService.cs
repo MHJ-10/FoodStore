@@ -28,14 +28,15 @@ namespace FoodStore.Server.Application.Services
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly UserDbContext _userDbContext;
         private readonly SignInManager<ApplicationUser> _signInManager;
-
+        private readonly ILogger<UserService> _logger;
         public UserService(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager,
-            IHttpContextAccessor httpContextAccessor, SignInManager<ApplicationUser> signInManager)
+            IHttpContextAccessor httpContextAccessor, SignInManager<ApplicationUser> signInManager, ILogger<UserService> logger)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _httpContextAccessor = httpContextAccessor;
             _signInManager = signInManager;
+            _logger = logger;
         }
         private string? GetCurrentUserId()
         {
@@ -228,5 +229,22 @@ namespace FoodStore.Server.Application.Services
             }
             return Result.Success;
         }
+        public async Task<ErrorOr<Success>> LogoutAsync()
+        {
+            var userId = GetCurrentUserId();
+
+            if (string.IsNullOrWhiteSpace(userId))
+                return Error.Unauthorized("Auth.NotAuthenticated", "User is not authenticated.");
+
+            // Revoke all active refresh tokens for this user
+            var request = new RevokeRefreshTokens.Request(userId);
+            await RevokeRefreshTokensAsync(request);
+
+
+            await _signInManager.SignOutAsync();
+            _logger.LogInformation("User with ID {UserId} has logged out.", userId);
+            return Result.Success;
+        }
+
     }
 }

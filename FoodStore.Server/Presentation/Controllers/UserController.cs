@@ -107,4 +107,17 @@ public class UserController : ControllerBase
       errors => BadRequest(errors)
         );
     }
+
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout()
+    {
+        var result = await _mediator.Send(new LogoutUser.Request());
+
+        return result.Match<ActionResult>(
+            _ => Ok("user logout successfully"),
+            errors => Unauthorized(errors)
+        );
+    }
+
 }
