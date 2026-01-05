@@ -23,7 +23,7 @@ namespace FoodStore.Server.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("FoodStore.Server.Infrastructure.DataModels.ApplicationUser", b =>
+            modelBuilder.Entity("FoodStore.Server.Identity.DataModels.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
@@ -38,6 +38,9 @@ namespace FoodStore.Server.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("DeletedOnUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
@@ -47,13 +50,14 @@ namespace FoodStore.Server.Migrations
 
                     b.Property<string>("FirstName")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
 
                     b.Property<string>("LastName")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
@@ -101,6 +105,30 @@ namespace FoodStore.Server.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("FoodStore.Server.Identity.DataModels.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ExpiresOnUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
+                });
+
             modelBuilder.Entity("FoodStore.Server.Infrastructure.DataModels.Customer", b =>
                 {
                     b.Property<int>("Id")
@@ -112,6 +140,9 @@ namespace FoodStore.Server.Migrations
                     b.Property<string>("Address")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ApplicationUserId")
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -146,6 +177,8 @@ namespace FoodStore.Server.Migrations
                         });
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ApplicationUserId");
 
                     b.ToTable("Customers");
                 });
@@ -248,30 +281,6 @@ namespace FoodStore.Server.Migrations
                     b.HasIndex("FoodId");
 
                     b.ToTable("OrderItems");
-                });
-
-            modelBuilder.Entity("FoodStore.Server.Infrastructure.DataModels.RefreshToken", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("ExpiresOnUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -407,6 +416,27 @@ namespace FoodStore.Server.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("FoodStore.Server.Identity.DataModels.RefreshToken", b =>
+                {
+                    b.HasOne("FoodStore.Server.Identity.DataModels.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("FoodStore.Server.Infrastructure.DataModels.Customer", b =>
+                {
+                    b.HasOne("FoodStore.Server.Identity.DataModels.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("ApplicationUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("FoodStore.Server.Infrastructure.DataModels.Food", b =>
                 {
                     b.HasOne("FoodStore.Server.Infrastructure.DataModels.FoodCategory", "Category")
@@ -526,17 +556,6 @@ namespace FoodStore.Server.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("FoodStore.Server.Infrastructure.DataModels.RefreshToken", b =>
-                {
-                    b.HasOne("FoodStore.Server.Infrastructure.DataModels.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -548,7 +567,7 @@ namespace FoodStore.Server.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
                 {
-                    b.HasOne("FoodStore.Server.Infrastructure.DataModels.ApplicationUser", null)
+                    b.HasOne("FoodStore.Server.Identity.DataModels.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -557,7 +576,7 @@ namespace FoodStore.Server.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
-                    b.HasOne("FoodStore.Server.Infrastructure.DataModels.ApplicationUser", null)
+                    b.HasOne("FoodStore.Server.Identity.DataModels.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -572,7 +591,7 @@ namespace FoodStore.Server.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("FoodStore.Server.Infrastructure.DataModels.ApplicationUser", null)
+                    b.HasOne("FoodStore.Server.Identity.DataModels.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -581,7 +600,7 @@ namespace FoodStore.Server.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
                 {
-                    b.HasOne("FoodStore.Server.Infrastructure.DataModels.ApplicationUser", null)
+                    b.HasOne("FoodStore.Server.Identity.DataModels.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)

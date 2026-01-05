@@ -19,7 +19,7 @@ public class Customer
 
     public required Email Email { get; set; }
 
-    public PhoneNumber? PhoneNumber { get; set; }
+    public required PhoneNumber PhoneNumber { get; set; }
 
     public string? Address { get; set; }
 }

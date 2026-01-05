@@ -33,7 +33,7 @@ builder.Services.Configure<JwtConfiguration>(builder.Configuration.GetSection(na
 builder.Services.AddDbContext<FoodStoreDbContext>((sp, options) =>
 {
     options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
+        builder.Configuration.GetConnectionString("FoodStoreConnection"),
         sql => sql.MigrationsAssembly(typeof(FoodStoreDbContext).Assembly.FullName));
     options.AddInterceptors(sp.GetRequiredService<SoftDeleteInterceptor>());
 });
