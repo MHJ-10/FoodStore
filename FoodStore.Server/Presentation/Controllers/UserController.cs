@@ -120,4 +120,16 @@ public class UserController : ControllerBase
         );
     }
 
+
+    [HttpPost("confirm-email")]
+    public async Task<IActionResult> ConfirmEmaiAsyncl(ConfirmEmail.Request confirmEmailRequest)
+    {
+        var result = await _mediator.Send(confirmEmailRequest);
+
+        return result.Match<ActionResult>(
+            _ => Ok("user email confirmed successfully"),
+            errors => BadRequest(errors)
+        );
+    }
+
 }

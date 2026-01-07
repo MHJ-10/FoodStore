@@ -15,5 +15,7 @@ namespace FoodStore.Server.Application.Services
         string? GetCurrentUserName();
         Task<ErrorOr<Success>> DeleteUserAsync(string userId);
         Task<ErrorOr<Success>> LogoutAsync();
+        Task<ErrorOr<Success>> ConfirmEmailAsync(ConfirmEmail.Request confirmEmailRequest);
+
     }
 }

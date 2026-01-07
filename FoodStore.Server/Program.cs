@@ -7,6 +7,7 @@ using FoodStore.Server.Domain.Enums;
 using FoodStore.Server.Identity;
 using FoodStore.Server.Identity.DataModels;
 using FoodStore.Server.Infrastructure;
+using FoodStore.Server.Infrastructure.ResendEmail;
 using FoodStore.Server.Infrastructure.Interceptor;
 using FoodStore.Server.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -16,6 +17,8 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
 using System.Text;
+using Resend;
+using FoodStore.Server.Application.Common.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,9 +54,21 @@ builder.Services
     .AddIdentity<ApplicationUser, IdentityRole>(options =>
     {
         options.User.RequireUniqueEmail = true;
+        options.SignIn.RequireConfirmedEmail = true;
     })
     .AddEntityFrameworkStores<FoodStoreDbContext>()
     .AddDefaultTokenProviders();
+
+
+builder.Services.AddOptions();
+builder.Services.AddHttpClient<ResendClient>();
+builder.Services.Configure<ResendClientOptions>(o =>
+{
+    o.ApiToken = builder.Configuration["Resend:ApiKey"]!;
+});
+builder.Services.AddTransient<IResend, ResendClient>();
+builder.Services.AddTransient<IEmailService, ResendEmailService>();
+
 
 // load typed config so we use the same values for creation and validation
 var jwtConfig = builder.Configuration

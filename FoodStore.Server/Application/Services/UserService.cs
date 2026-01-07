@@ -1,22 +1,13 @@
 ﻿using ErrorOr;
+using FoodStore.Server.Application.Common.Interfaces;
 using FoodStore.Server.Application.Users.Commands;
 using FoodStore.Server.Domain.Enums;
 using FoodStore.Server.Domain.Valueobjects;
 using FoodStore.Server.Identity;
 using FoodStore.Server.Identity.DataModels;
-using FoodStore.Server.Infrastructure.DataModels;
-using FoodStore.Server.Settings;
-using MediatR;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
-using NuGet.Versioning;
-using System;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 
 namespace FoodStore.Server.Application.Services
 {
@@ -29,14 +20,17 @@ namespace FoodStore.Server.Application.Services
         private readonly UserDbContext _userDbContext;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly ILogger<UserService> _logger;
+        private readonly IEmailService _emailService;
         public UserService(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager,
-            IHttpContextAccessor httpContextAccessor, SignInManager<ApplicationUser> signInManager, ILogger<UserService> logger)
+            IHttpContextAccessor httpContextAccessor, SignInManager<ApplicationUser> signInManager, ILogger<UserService> logger, IEmailService emailService, TokenProvider tokenProvider)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _httpContextAccessor = httpContextAccessor;
             _signInManager = signInManager;
             _logger = logger;
+            _emailService = emailService;
+            _tokenProvider = tokenProvider;
         }
         private string? GetCurrentUserId()
         {
@@ -81,6 +75,8 @@ namespace FoodStore.Server.Application.Services
                 Email = email.Value.Value,
                 Address = registerRequest.Address,
             };
+
+
             var result = await _userManager.CreateAsync(user, password.Value.Value);
             if (!result.Succeeded)
             {
@@ -90,6 +86,17 @@ namespace FoodStore.Server.Application.Services
                         description: e.Description))
                     .ToList();
             }
+
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
+            await _emailService.SendEmailAsync(
+                    user.Email,
+                    "Your confirmation code",
+                    $"""
+                  Hello {user.FirstName} {user.LastName},<br/><br/>
+                  Your email confirmation code is: <strong>{token}</strong>
+                  """);
+
             return new RegisterUser.Response()
             {
                 UserId = user.Id,
@@ -104,6 +111,8 @@ namespace FoodStore.Server.Application.Services
             if (user == null || !await _userManager.CheckPasswordAsync(user, loginRequest.Password))
                 return Error.NotFound("Invalid Email or Password");
 
+            if (!user.EmailConfirmed)
+                return Error.Failure("Email not confirmed. Please confirm your email before logging in.");
             string acessToken = await _tokenProvider.GenerateAcessTokenAsync(user);
             string refreshToken = await GetOrCreateRefreshTokenAsync(user);
 
@@ -243,6 +252,20 @@ namespace FoodStore.Server.Application.Services
 
             await _signInManager.SignOutAsync();
             _logger.LogInformation("User with ID {UserId} has logged out.", userId);
+            return Result.Success;
+        }
+
+        public async Task<ErrorOr<Success>> ConfirmEmailAsync(ConfirmEmail.Request confirmEmailRequest)
+        {
+            var user = await _userManager.FindByIdAsync(confirmEmailRequest.UserId);
+            if (user is null)
+                return Error.NotFound("User.NotFound", "User not found.");
+
+            var result = await _userManager.ConfirmEmailAsync(user, confirmEmailRequest.Code);
+
+            if (!result.Succeeded)
+                return Error.Failure($"Failed to confirm email.");
+
             return Result.Success;
         }
 
