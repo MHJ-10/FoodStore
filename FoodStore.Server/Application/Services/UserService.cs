@@ -155,6 +155,11 @@ namespace FoodStore.Server.Application.Services
         public async Task<ErrorOr<Success>> AddRoleAsync(AddRole.Request addRoleRequest)
         {
             var user = await _userManager.FindByIdAsync(addRoleRequest.UserId);
+            var currentUserId = GetCurrentUserId();
+
+            if (addRoleRequest.UserId == currentUserId)
+                return Error.Failure("you can't change your role.");
+
             if (user == null)
                 return Error.NotFound($"Incorrect credentials");
 
@@ -198,10 +203,14 @@ namespace FoodStore.Server.Application.Services
             await _userDbContext.SaveChangesAsync();
             return new LoginUserWithRefreshToken.Response(newAcessToken, newRefreshTokenString);
         }
-        public async Task<ErrorOr<Success>> RevokeRefreshTokensAsync(RevokeRefreshTokens.Request request)
+        public async Task<ErrorOr<Success>> RevokeRefreshTokenAsync(RevokeRefreshToken.Request request)
         {
             // Get the logged-in user's ID from JWT
             var currentUserId = GetCurrentUserId();
+
+            Console.WriteLine($"currentUserId => {currentUserId}");
+            Console.WriteLine($"userId => {request.UserId}");
+
             if (currentUserId is null)
             {
                 return Error.Forbidden("Auth.InvalidUser", "Could not determine the current user.");
@@ -249,8 +258,8 @@ namespace FoodStore.Server.Application.Services
                 return Error.Unauthorized("Auth.NotAuthenticated", "User is not authenticated.");
 
             // Revoke all active refresh tokens for this user
-            var request = new RevokeRefreshTokens.Request(userId);
-            await RevokeRefreshTokensAsync(request);
+            var request = new RevokeRefreshToken.Request(userId);
+            await RevokeRefreshTokenAsync(request);
 
 
             await _signInManager.SignOutAsync();

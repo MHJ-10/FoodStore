@@ -1,7 +1,4 @@
-﻿using FoodStore.Server.Application.Services;
-using FoodStore.Server.Application.Users.Commands;
-using FoodStore.Server.Domain.Valueobjects;
-using FoodStore.Server.Infrastructure.DataModels;
+﻿using FoodStore.Server.Application.Users.Commands;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -70,9 +67,12 @@ public class UserController : ControllerBase
        );
     }
     [Authorize]
-    [HttpDelete("revoke-refresh-tokens/{userId}")]
-    public async Task<IActionResult> RevokeUserRefreshTokens(RevokeRefreshTokens.Request request)
+    [HttpDelete("revoke-refresh-token/{userId}")]
+    public async Task<IActionResult> RevokeUserRefreshTokens(string userId)
     {
+
+        var request = new RevokeRefreshToken.Request(userId);
+
         var result = await _mediator.Send(request);
 
         return result.Match<ActionResult>(

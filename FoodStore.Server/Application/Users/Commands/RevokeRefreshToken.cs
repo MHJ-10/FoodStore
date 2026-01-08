@@ -4,7 +4,7 @@ using MediatR;
 
 namespace FoodStore.Server.Application.Users.Commands;
 
-public static class RevokeRefreshTokens
+public static class RevokeRefreshToken
 {
     public sealed record Request(string UserId) : IRequest<ErrorOr<Success>>
     {
@@ -18,7 +18,7 @@ public static class RevokeRefreshTokens
         }
         public async Task<ErrorOr<Success>> Handle(Request request, CancellationToken cancellationToken)
         {
-          return  await _userService.RevokeRefreshTokensAsync(request);
+          return  await _userService.RevokeRefreshTokenAsync(request);
         }
     }
 }
