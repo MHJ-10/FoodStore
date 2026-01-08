@@ -22,7 +22,7 @@ namespace FoodStore.Server.Application.Services
         private readonly ILogger<UserService> _logger;
         private readonly IEmailService _emailService;
         public UserService(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager,
-            IHttpContextAccessor httpContextAccessor, SignInManager<ApplicationUser> signInManager, ILogger<UserService> logger, IEmailService emailService, TokenProvider tokenProvider,UserDbContext userDbContext)
+            IHttpContextAccessor httpContextAccessor, SignInManager<ApplicationUser> signInManager, ILogger<UserService> logger, IEmailService emailService, TokenProvider tokenProvider, UserDbContext userDbContext)
         {
             _userManager = userManager;
             _roleManager = roleManager;
@@ -237,6 +237,12 @@ namespace FoodStore.Server.Application.Services
         }
         public async Task<ErrorOr<Success>> DeleteUserAsync(string userId)
         {
+            var currentUserId = GetCurrentUserId();
+            if (userId == currentUserId)
+            {
+                return Error.Failure("You can't delete this user");
+            }
+
             var user = await _userManager.FindByIdAsync(userId);
             if (user is null)
                 return Error.NotFound("User.NotFound", "User not found.");
