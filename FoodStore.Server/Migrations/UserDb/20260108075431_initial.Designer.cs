@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FoodStore.Server.Migrations.UserDb
 {
     [DbContext(typeof(UserDbContext))]
-    [Migration("20260107061940_initial")]
+    [Migration("20260108075431_initial")]
     partial class initial
     {
         /// <inheritdoc />

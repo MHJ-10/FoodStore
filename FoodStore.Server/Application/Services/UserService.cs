@@ -22,7 +22,7 @@ namespace FoodStore.Server.Application.Services
         private readonly ILogger<UserService> _logger;
         private readonly IEmailService _emailService;
         public UserService(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager,
-            IHttpContextAccessor httpContextAccessor, SignInManager<ApplicationUser> signInManager, ILogger<UserService> logger, IEmailService emailService, TokenProvider tokenProvider)
+            IHttpContextAccessor httpContextAccessor, SignInManager<ApplicationUser> signInManager, ILogger<UserService> logger, IEmailService emailService, TokenProvider tokenProvider,UserDbContext userDbContext)
         {
             _userManager = userManager;
             _roleManager = roleManager;
@@ -31,6 +31,7 @@ namespace FoodStore.Server.Application.Services
             _logger = logger;
             _emailService = emailService;
             _tokenProvider = tokenProvider;
+            _userDbContext = userDbContext;
         }
         private string? GetCurrentUserId()
         {
@@ -113,10 +114,10 @@ namespace FoodStore.Server.Application.Services
 
             if (!user.EmailConfirmed)
                 return Error.Failure("Email not confirmed. Please confirm your email before logging in.");
-            string acessToken = await _tokenProvider.GenerateAcessTokenAsync(user);
+            string accessToken = await _tokenProvider.GenerateAcessTokenAsync(user);
             string refreshToken = await GetOrCreateRefreshTokenAsync(user);
 
-            return new LoginUser.Response(acessToken, refreshToken);
+            return new LoginUser.Response(accessToken, refreshToken);
         }
         private async Task<string> GetOrCreateRefreshTokenAsync(ApplicationUser user)
         {

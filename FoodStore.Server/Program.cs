@@ -56,7 +56,7 @@ builder.Services
         options.User.RequireUniqueEmail = true;
         options.SignIn.RequireConfirmedEmail = true;
     })
-    .AddEntityFrameworkStores<FoodStoreDbContext>()
+    .AddEntityFrameworkStores<UserDbContext>()
     .AddDefaultTokenProviders();
 
 

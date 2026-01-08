@@ -1,13 +1,10 @@
-﻿using FoodStore.Server.Identity.DataModels;
-using FoodStore.Server.Infrastructure.DataModels;
+﻿using FoodStore.Server.Infrastructure.DataModels;
 using FoodStore.Server.Infrastructure.FluentApi;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using System.Reflection.Emit;
 
 namespace FoodStore.Server.Infrastructure;
 
-public class FoodStoreDbContext : IdentityDbContext<ApplicationUser>
+public class FoodStoreDbContext : DbContext
 {
     public FoodStoreDbContext(DbContextOptions<FoodStoreDbContext> options)
         : base(options)
@@ -18,7 +15,6 @@ public class FoodStoreDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Customer> Customers { get; set; }
     public DbSet<Order> Orders { get; set; }
     public DbSet<OrderItem> OrderItems { get; set; }
-    public DbSet<RefreshToken> RefreshTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
