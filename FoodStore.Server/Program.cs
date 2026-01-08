@@ -157,6 +157,21 @@ builder.Services.AddRouting(options =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+
+    foreach (var roleName in Enum.GetNames(typeof(UserRole)))
+    {
+        var exists = await roleManager.RoleExistsAsync(roleName);
+        if (!exists)
+        {
+            await roleManager.CreateAsync(new IdentityRole(roleName));
+        }
+    }
+}
+
 
 // Middleware Pipeline
 

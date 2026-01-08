@@ -23,7 +23,7 @@ public class TokenProvider(UserManager<ApplicationUser> userManager, IOptionsMon
          [
             new(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub, user.Id),
             new(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Name, user.UserName!),
-            ..roles.Select(role => new Claim(ClaimTypes.Role, role)) // spread operator — it inserts items from another collection.
+            ..roles.Select(role => new Claim(ClaimTypes.Role, role))
          ];
         var tokenDescriptor = new SecurityTokenDescriptor
         {

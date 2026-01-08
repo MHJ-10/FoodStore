@@ -77,8 +77,8 @@ namespace FoodStore.Server.Application.Services
                 Address = registerRequest.Address,
             };
 
-
             var result = await _userManager.CreateAsync(user, password.Value.Value);
+
             if (!result.Succeeded)
             {
                 return result.Errors
@@ -87,6 +87,8 @@ namespace FoodStore.Server.Application.Services
                         description: e.Description))
                     .ToList();
             }
+
+            await _userManager.AddToRoleAsync(user, UserRole.Customer.ToString());
 
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
@@ -152,9 +154,9 @@ namespace FoodStore.Server.Application.Services
         }
         public async Task<ErrorOr<Success>> AddRoleAsync(AddRole.Request addRoleRequest)
         {
-            var user = await _userManager.FindByEmailAsync(addRoleRequest.Email);
-            if (user == null || !await _userManager.CheckPasswordAsync(user, addRoleRequest.Password))
-                return Error.NotFound($"Incorrect Email or Password");
+            var user = await _userManager.FindByIdAsync(addRoleRequest.UserId);
+            if (user == null)
+                return Error.NotFound($"Incorrect credentials");
 
             if (!Enum.TryParse<UserRole>(addRoleRequest.Role, true, out var validRole))
                 return Error.NotFound($"Role {addRoleRequest.Role} not found.");
