@@ -1,5 +1,6 @@
 using FluentValidation;
 using FoodStore.Server.Application.Behaviors;
+using FoodStore.Server.Application.Common.Interfaces;
 using FoodStore.Server.Application.Foods.Commands;
 using FoodStore.Server.Application.Middlewares;
 using FoodStore.Server.Application.Services;
@@ -7,18 +8,17 @@ using FoodStore.Server.Domain.Enums;
 using FoodStore.Server.Identity;
 using FoodStore.Server.Identity.DataModels;
 using FoodStore.Server.Infrastructure;
-using FoodStore.Server.Infrastructure.ResendEmail;
 using FoodStore.Server.Infrastructure.Interceptor;
+using FoodStore.Server.Infrastructure.ResendEmail;
 using FoodStore.Server.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Resend;
 using Serilog;
 using System.Text;
-using Resend;
-using FoodStore.Server.Application.Common.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -95,6 +95,17 @@ builder.Services.AddAuthentication(options =>
 });
 
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowSwagger", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5106")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUserService, UserService>();
@@ -119,19 +130,16 @@ builder.Services.AddSwaggerGen(o =>
 {
     o.CustomSchemaIds(id => id.FullName!.Replace('+', '-'));
 
-    var securityScheme = new OpenApiSecurityScheme
+    o.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Name = "JWT Authentication",
-        Description = "Enter your JWT token in this field",
+        Type = SecuritySchemeType.ApiKey,
+        Name = "Authorization",
         In = ParameterLocation.Header,
-        Type = SecuritySchemeType.Http,
-        Scheme = JwtBearerDefaults.AuthenticationScheme,
-        BearerFormat = "JWT"
-    };
+        Description = "JWT Authorization header. Enter **only the token** (no 'Bearer ' prefix).",
+        Scheme = "Bearer"
+    });
 
-    o.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme, securityScheme);
-
-    var securityRequirement = new OpenApiSecurityRequirement
+    o.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
@@ -139,14 +147,12 @@ builder.Services.AddSwaggerGen(o =>
                 Reference = new OpenApiReference
                 {
                     Type = ReferenceType.SecurityScheme,
-                    Id = JwtBearerDefaults.AuthenticationScheme
+                    Id = "Bearer"
                 }
             },
-            new string[] {}
+            new List<string>()
         }
-    };
-
-    o.AddSecurityRequirement(securityRequirement);
+    });
 });
 
 builder.Services.AddRouting(options =>
@@ -186,7 +192,7 @@ app.UseSerilogRequestLogging();
 app.UseHttpsRedirection();
 
 app.UseCors("AllowSwagger");
-
+app.UseStatusCodePages();
 
 app.UseStaticFiles();
 app.UseDefaultFiles();
