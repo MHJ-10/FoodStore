@@ -19,7 +19,9 @@ using Microsoft.OpenApi.Models;
 using Resend;
 using Serilog;
 using System.Text;
+using DotNetEnv;
 
+Env.Load();
 var builder = WebApplication.CreateBuilder(args);
 
 // Logging (Serilog)
