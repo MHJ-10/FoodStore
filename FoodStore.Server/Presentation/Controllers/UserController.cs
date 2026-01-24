@@ -1,4 +1,5 @@
 ﻿using FoodStore.Server.Application.Users.Commands;
+using FoodStore.Server.Application.Users.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -132,4 +133,15 @@ public class UserController : ControllerBase
         );
     }
 
+    [Authorize(Roles = "Admin")]
+    [HttpGet("all")]
+    public async Task<IActionResult> GetAllUsers()
+    {
+        var result = await _mediator.Send(new GetAllUsers.Request());
+
+        return result.Match<IActionResult>(
+            users => Ok(users),
+            errors => BadRequest(errors)
+        );
+    }
 }

@@ -1,10 +1,13 @@
 ﻿using ErrorOr;
 using FoodStore.Server.Application.Common.Interfaces;
 using FoodStore.Server.Application.Users.Commands;
+using FoodStore.Server.Application.Users.Errors;
+using FoodStore.Server.Application.Users.Queries;
 using FoodStore.Server.Domain.Enums;
 using FoodStore.Server.Domain.Valueobjects;
 using FoodStore.Server.Identity;
 using FoodStore.Server.Identity.DataModels;
+using Mapster;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
@@ -45,6 +48,7 @@ namespace FoodStore.Server.Application.Services
             var userName = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Name);
             return userName;
         }
+
 
         public async Task<ErrorOr<RegisterUser.Response>> RegisterAsync(RegisterUser.Request registerRequest)
         {
@@ -183,7 +187,6 @@ namespace FoodStore.Server.Application.Services
 
             return Result.Success;
         }
-
         public async Task<ErrorOr<LoginUserWithRefreshToken.Response>> LoginUserWithRefreshTokenAsync(LoginUserWithRefreshToken.Request request)
         {
 
@@ -272,7 +275,6 @@ namespace FoodStore.Server.Application.Services
             _logger.LogInformation("User with ID {UserId} has logged out.", userId);
             return Result.Success;
         }
-
         public async Task<ErrorOr<Success>> ConfirmEmailAsync(ConfirmEmail.Request confirmEmailRequest)
         {
             var user = await _userManager.FindByIdAsync(confirmEmailRequest.UserId);
@@ -286,6 +288,13 @@ namespace FoodStore.Server.Application.Services
 
             return Result.Success;
         }
+        public async Task<ErrorOr<IList<GetAllUsers.Response>>> GetAllUsersAsync(CancellationToken cancellationToken)
+        {
+            var users = await _userManager.Users.ProjectToType<GetAllUsers.Response>().ToListAsync(cancellationToken);
 
+            if (!users.Any()) return UserErrors.NoUsersAvailable;
+
+            return users;
+        }
     }
 }
