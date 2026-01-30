@@ -16,5 +16,6 @@ namespace FoodStore.Server.Application.Services
         Task<ErrorOr<Success>> LogoutAsync();
         Task<ErrorOr<Success>> ConfirmEmailAsync(ConfirmEmail.Request confirmEmailRequest);
         Task<ErrorOr<IList<GetAllUsers.Response>>> GetAllUsersAsync(CancellationToken cancellationToken);
+        Task<ErrorOr<GetUserByEmail.Response>> GetUserByEmailAsync(string email, CancellationToken cancellationToken);
     }
 }

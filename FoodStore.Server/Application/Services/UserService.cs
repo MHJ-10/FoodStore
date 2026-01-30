@@ -296,5 +296,23 @@ namespace FoodStore.Server.Application.Services
 
             return users;
         }
+
+        public async Task<ErrorOr<GetUserByEmail.Response>> GetUserByEmailAsync(string email, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return Error.Validation("User.InvalidEmail", "Email cannot be empty.");
+
+            var user = await _userManager.Users
+                .Where(u => u.Email == email)
+                .ProjectToType<GetUserByEmail.Response>()
+                .FirstOrDefaultAsync(cancellationToken);
+
+
+            if (user == null)
+                return Error.NotFound("User.NotFound", $"No user found with email '{email}'.");
+
+            return user;
+        }
+
     }
 }

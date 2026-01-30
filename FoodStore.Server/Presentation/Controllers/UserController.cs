@@ -144,4 +144,17 @@ public class UserController : ControllerBase
             errors => BadRequest(errors)
         );
     }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("email/{email}")]
+    public async Task<IActionResult> GetUserByEmail(string email)
+    {
+        var request = new GetUserByEmail.Request(email);
+        var result = await _mediator.Send(request);
+
+        return result.Match<IActionResult>(
+            user => Ok(user),
+            errors => BadRequest(errors)
+            );
+    }
 }
