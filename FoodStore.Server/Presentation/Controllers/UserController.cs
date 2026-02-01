@@ -157,4 +157,17 @@ public class UserController : ControllerBase
             errors => BadRequest(errors)
             );
     }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("id/{id}")]
+    public async Task<IActionResult> GetUserById(string id)
+    {
+        var request = new GetUserById.Request(id);
+        var result = await _mediator.Send(request);
+
+        return result.Match<IActionResult>(
+            user => Ok(user),
+            errors => BadRequest(errors)
+            );
+    }
 }

@@ -296,7 +296,6 @@ namespace FoodStore.Server.Application.Services
 
             return users;
         }
-
         public async Task<ErrorOr<GetUserByEmail.Response>> GetUserByEmailAsync(string email, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(email))
@@ -307,12 +306,25 @@ namespace FoodStore.Server.Application.Services
                 .ProjectToType<GetUserByEmail.Response>()
                 .FirstOrDefaultAsync(cancellationToken);
 
-
             if (user == null)
                 return Error.NotFound("User.NotFound", $"No user found with email '{email}'.");
 
             return user;
         }
+        public async Task<ErrorOr<GetUserById.Response>> GetUserByIdAsync(string id, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+                return Error.Validation("User.InvalidId", "userId cannot be empty.");
 
+            var user = await _userManager.Users
+                .Where(u => u.Id == id)
+                .ProjectToType<GetUserById.Response>()
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (user == null)
+                return Error.NotFound("User.NotFound", $"No user found with userId '{id}'.");
+
+            return user;
+        }
     }
 }
