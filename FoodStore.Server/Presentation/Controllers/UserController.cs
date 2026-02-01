@@ -155,7 +155,7 @@ public class UserController : ControllerBase
         return result.Match<IActionResult>(
             user => Ok(user),
             errors => BadRequest(errors)
-            );
+        );
     }
 
     [Authorize(Roles = "Admin")]
@@ -168,6 +168,18 @@ public class UserController : ControllerBase
         return result.Match<IActionResult>(
             user => Ok(user),
             errors => BadRequest(errors)
-            );
+        );
+    }
+
+    [Authorize]
+    [HttpPut("profile")]
+    public async Task<IActionResult> UpdateUser(UpdateUser.Request request)
+    {
+        var result = await _mediator.Send(request);
+
+        return result.Match<IActionResult>(
+            updatedUser => Ok(updatedUser),
+            errors => BadRequest(errors)
+        );
     }
 }

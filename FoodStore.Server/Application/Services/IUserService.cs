@@ -18,5 +18,6 @@ namespace FoodStore.Server.Application.Services
         Task<ErrorOr<IList<GetAllUsers.Response>>> GetAllUsersAsync(CancellationToken cancellationToken);
         Task<ErrorOr<GetUserByEmail.Response>> GetUserByEmailAsync(string email, CancellationToken cancellationToken);
         Task<ErrorOr<GetUserById.Response>> GetUserByIdAsync(string id, CancellationToken cancellationToken);
+        Task<ErrorOr<UpdateUser.Response>> UpdateUserAsync(UpdateUser.Request updateUserRequest, CancellationToken cancellationToken);
     }
 }

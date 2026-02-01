@@ -326,5 +326,44 @@ namespace FoodStore.Server.Application.Services
 
             return user;
         }
+        public async Task<ErrorOr<UpdateUser.Response>> UpdateUserAsync(UpdateUser.Request request, CancellationToken cancellationToken)
+        {
+            var userId = GetCurrentUserId();
+
+            if (string.IsNullOrWhiteSpace(userId))
+                return Error.Validation("User.InvalidId", "userId cannot be empty.");
+
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user is null)
+                return Error.NotFound("User.NotFound", "User not found.");
+
+            user.UserName = request.UserName;
+            user.FirstName = request.FirstName;
+            user.LastName = request.LastName;
+            user.Address = request.Address;
+            user.PhoneNumber = request.PhoneNumber;
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+            {
+                return Error.Failure(
+                    "User.UpdateFailed",
+                    string.Join(", ", result.Errors.Select(e => e.Description))
+                );
+            }
+
+            var updatedUser = new UpdateUser.Response
+            {
+                UserName = user.UserName,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Address = user.Address,
+                PhoneNumber = user.PhoneNumber
+            };
+
+            return updatedUser;
+        }
     }
 }
