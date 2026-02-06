@@ -1,11 +1,6 @@
 ﻿using FoodStore.Server.Infrastructure.DataModels;
 using FoodStore.Server.Infrastructure.FluentApi;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FoodStore.Server.Infrastructure;
 
@@ -20,6 +15,7 @@ public class FoodStoreDbContext : DbContext
     public DbSet<Customer> Customers { get; set; }
     public DbSet<Order> Orders { get; set; }
     public DbSet<OrderItem> OrderItems { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new FoodConfiguration());
