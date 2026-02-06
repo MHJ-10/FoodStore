@@ -1,4 +1,5 @@
 ﻿using FoodStore.Server.Application.Users.Commands;
+using FoodStore.Server.Application.Users.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -132,4 +133,53 @@ public class UserController : ControllerBase
         );
     }
 
+    [Authorize(Roles = "Admin")]
+    [HttpGet("all")]
+    public async Task<IActionResult> GetAllUsers()
+    {
+        var result = await _mediator.Send(new GetAllUsers.Request());
+
+        return result.Match<IActionResult>(
+            users => Ok(users),
+            errors => BadRequest(errors)
+        );
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("email/{email}")]
+    public async Task<IActionResult> GetUserByEmail(string email)
+    {
+        var request = new GetUserByEmail.Request(email);
+        var result = await _mediator.Send(request);
+
+        return result.Match<IActionResult>(
+            user => Ok(user),
+            errors => BadRequest(errors)
+        );
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("id/{id}")]
+    public async Task<IActionResult> GetUserById(string id)
+    {
+        var request = new GetUserById.Request(id);
+        var result = await _mediator.Send(request);
+
+        return result.Match<IActionResult>(
+            user => Ok(user),
+            errors => BadRequest(errors)
+        );
+    }
+
+    [Authorize]
+    [HttpPut("profile")]
+    public async Task<IActionResult> UpdateUser(UpdateUser.Request request)
+    {
+        var result = await _mediator.Send(request);
+
+        return result.Match<IActionResult>(
+            updatedUser => Ok(updatedUser),
+            errors => BadRequest(errors)
+        );
+    }
 }

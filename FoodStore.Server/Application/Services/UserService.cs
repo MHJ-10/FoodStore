@@ -1,10 +1,13 @@
 ﻿using ErrorOr;
 using FoodStore.Server.Application.Common.Interfaces;
 using FoodStore.Server.Application.Users.Commands;
+using FoodStore.Server.Application.Users.Errors;
+using FoodStore.Server.Application.Users.Queries;
 using FoodStore.Server.Domain.Enums;
 using FoodStore.Server.Domain.Valueobjects;
 using FoodStore.Server.Identity;
 using FoodStore.Server.Identity.DataModels;
+using Mapster;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
@@ -45,6 +48,7 @@ namespace FoodStore.Server.Application.Services
             var userName = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Name);
             return userName;
         }
+
 
         public async Task<ErrorOr<RegisterUser.Response>> RegisterAsync(RegisterUser.Request registerRequest)
         {
@@ -183,7 +187,6 @@ namespace FoodStore.Server.Application.Services
 
             return Result.Success;
         }
-
         public async Task<ErrorOr<LoginUserWithRefreshToken.Response>> LoginUserWithRefreshTokenAsync(LoginUserWithRefreshToken.Request request)
         {
 
@@ -272,7 +275,6 @@ namespace FoodStore.Server.Application.Services
             _logger.LogInformation("User with ID {UserId} has logged out.", userId);
             return Result.Success;
         }
-
         public async Task<ErrorOr<Success>> ConfirmEmailAsync(ConfirmEmail.Request confirmEmailRequest)
         {
             var user = await _userManager.FindByIdAsync(confirmEmailRequest.UserId);
@@ -286,6 +288,82 @@ namespace FoodStore.Server.Application.Services
 
             return Result.Success;
         }
+        public async Task<ErrorOr<IList<GetAllUsers.Response>>> GetAllUsersAsync(CancellationToken cancellationToken)
+        {
+            var users = await _userManager.Users.ProjectToType<GetAllUsers.Response>().ToListAsync(cancellationToken);
 
+            if (!users.Any()) return UserErrors.NoUsersAvailable;
+
+            return users;
+        }
+        public async Task<ErrorOr<GetUserByEmail.Response>> GetUserByEmailAsync(string email, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return Error.Validation("User.InvalidEmail", "Email cannot be empty.");
+
+            var user = await _userManager.Users
+                .Where(u => u.Email == email)
+                .ProjectToType<GetUserByEmail.Response>()
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (user == null)
+                return Error.NotFound("User.NotFound", $"No user found with email '{email}'.");
+
+            return user;
+        }
+        public async Task<ErrorOr<GetUserById.Response>> GetUserByIdAsync(string id, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+                return Error.Validation("User.InvalidId", "userId cannot be empty.");
+
+            var user = await _userManager.Users
+                .Where(u => u.Id == id)
+                .ProjectToType<GetUserById.Response>()
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (user == null)
+                return Error.NotFound("User.NotFound", $"No user found with userId '{id}'.");
+
+            return user;
+        }
+        public async Task<ErrorOr<UpdateUser.Response>> UpdateUserAsync(UpdateUser.Request request, CancellationToken cancellationToken)
+        {
+            var userId = GetCurrentUserId();
+
+            if (string.IsNullOrWhiteSpace(userId))
+                return Error.Validation("User.InvalidId", "userId cannot be empty.");
+
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user is null)
+                return Error.NotFound("User.NotFound", "User not found.");
+
+            user.UserName = request.UserName;
+            user.FirstName = request.FirstName;
+            user.LastName = request.LastName;
+            user.Address = request.Address;
+            user.PhoneNumber = request.PhoneNumber;
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+            {
+                return Error.Failure(
+                    "User.UpdateFailed",
+                    string.Join(", ", result.Errors.Select(e => e.Description))
+                );
+            }
+
+            var updatedUser = new UpdateUser.Response
+            {
+                UserName = user.UserName,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Address = user.Address,
+                PhoneNumber = user.PhoneNumber
+            };
+
+            return updatedUser;
+        }
     }
 }

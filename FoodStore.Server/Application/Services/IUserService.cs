@@ -1,7 +1,6 @@
 ﻿using ErrorOr;
 using FoodStore.Server.Application.Users.Commands;
-using FoodStore.Server.Infrastructure.DataModels;
-using MediatR;
+using FoodStore.Server.Application.Users.Queries;
 
 namespace FoodStore.Server.Application.Services
 {
@@ -16,6 +15,9 @@ namespace FoodStore.Server.Application.Services
         Task<ErrorOr<Success>> DeleteUserAsync(string userId);
         Task<ErrorOr<Success>> LogoutAsync();
         Task<ErrorOr<Success>> ConfirmEmailAsync(ConfirmEmail.Request confirmEmailRequest);
-
+        Task<ErrorOr<IList<GetAllUsers.Response>>> GetAllUsersAsync(CancellationToken cancellationToken);
+        Task<ErrorOr<GetUserByEmail.Response>> GetUserByEmailAsync(string email, CancellationToken cancellationToken);
+        Task<ErrorOr<GetUserById.Response>> GetUserByIdAsync(string id, CancellationToken cancellationToken);
+        Task<ErrorOr<UpdateUser.Response>> UpdateUserAsync(UpdateUser.Request updateUserRequest, CancellationToken cancellationToken);
     }
 }
