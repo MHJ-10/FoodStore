@@ -17,6 +17,6 @@ public class FoodCategoryConfiguration : IEntityTypeConfiguration<FoodCategory>
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Name).HasMaxLength(50).IsRequired();
         builder.HasMany(x => x.Foods).WithOne(x => x.Category).OnDelete(DeleteBehavior.Restrict);
-
+        builder.HasQueryFilter(u => !u.IsDeleted);
     }
 }
