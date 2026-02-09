@@ -2,9 +2,9 @@
 
 ## 👨‍💻 Contributors
 
-- Mohammad Hossein Jafari => Authentication, Authorization, External Service
-- Parsa Maghsodian => Validation Behavior, Middleware, Error Message
-- Arshia Mokhtari => Repository, Unit of Work
+- Mohammad Hossein Jafari => Authentication, Authorization, External Service, User Services
+- Parsa Maghsodian => Validation Behavior, Middleware, Error Message, Medaitor/CQRS, Global Exception Handler, Soft Delete, Logging, Serilog, Category Services   
+- Arshia Mokhtari => Repository, Unit of Work, Food Services
 
 ---
 
