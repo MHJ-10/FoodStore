@@ -3,7 +3,7 @@
 ## 👨‍💻 Contributors
 
 - Mohammad Hossein Jafari => Authentication, Authorization, External Service, User Services
-- Parsa Maghsodian => Validation Behavior, Middleware, Error Message, Medaitor/CQRS, Global Exception Handler, Soft Delete, Logging, Serilog, Category Services   
+- Parsa Maghsodian => Validation Behavior, Middleware, Error Message, Medaitor/CQRS, Global Exception Handler, Soft Delete, Logging, Serilog, Category Services, Result pattern, Option pattern  
 - Arshia Mokhtari => Repository, Unit of Work, Food Services
 
 ---
