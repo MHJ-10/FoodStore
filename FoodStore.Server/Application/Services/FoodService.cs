@@ -20,7 +20,7 @@ namespace FoodStore.Server.Application.Services;
 public class FoodService : IFoodService
 {
     private readonly FoodStoreDbContext _db;
-    public FoodService(FoodStoreDbContext db, IValidator<CreateFood.CreateFoodCommand> validator)
+    public FoodService(FoodStoreDbContext db)
     {
         _db = db;
     }
